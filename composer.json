@@ -9,7 +9,7 @@
     "m2-oh/core": "*"
   },
   "license": [
-    "Proprietary"
+    "OSL-3.0"
   ],
   "autoload": {
     "files": [
