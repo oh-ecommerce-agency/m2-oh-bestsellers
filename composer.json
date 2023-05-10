@@ -1,0 +1,23 @@
+{
+  "name": "oh/module-bestsellers",
+  "version": "1.0.0",
+  "description": "N/A",
+  "type": "magento2-module",
+  "require": {
+    "php": ">=7.4",
+    "magento/framework": "*",
+    "magento/module-catalog": "104.0.*",
+    "m2-oh/core": "*"
+  },
+  "license": [
+    "Proprietary"
+  ],
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "OH\\Bestsellers\\": ""
+    }
+  }
+}

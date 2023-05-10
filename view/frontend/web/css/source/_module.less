@@ -1,0 +1,20 @@
+& when (@media-common = true) {
+  .block-bestseller-products {
+    .widget-bestseller-grid {
+      .product-item-info {
+        &:hover {
+          box-shadow: none;
+          border: none;
+          padding: initial;
+          margin: initial;
+        }
+
+      .reviews-actions {
+        .action.add {
+          display: none;
+        }
+      }
+    }
+  }
+}
+}
