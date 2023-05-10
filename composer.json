@@ -6,7 +6,7 @@
     "php": ">=7.4",
     "magento/framework": "*",
     "magento/module-catalog": "104.0.*",
-    "m2-oh/core": "*"
+    "m2-oh/module-core": "*"
   },
   "license": [
     "OSL-3.0"
