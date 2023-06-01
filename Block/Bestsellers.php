@@ -15,7 +15,12 @@ class Bestsellers extends Template implements BlockInterface
     /**
      * Default value for products count that will be shown
      */
-    const DEFAULT_PRODUCTS_COUNT = 10;
+    const DEFAULT_PRODUCTS_COUNT = 4;
+
+    /**
+     * Default value whether show title
+     */
+    const DEFAULT_TITLE = 'Bestseller Products';
 
     /**
      * @var \Magento\Catalog\Helper\Product\Compare
@@ -79,12 +84,27 @@ class Bestsellers extends Template implements BlockInterface
         $this->cartHelper = $context->getCartHelper();
     }
 
+    public function getShowTitleBestsellers()
+    {
+        return $this->getData('show_title');
+    }
+
+    public function getTitleBestsellers()
+    {
+        $title = $this->getData('title');
+        if ($title === null) {
+            $title = __(self::DEFAULT_TITLE);
+        }
+
+        return $title;
+    }
+
     public function getBestsellerProduct()
     {
         return $this->resourceFactory
             ->create('Magento\Sales\Model\ResourceModel\Report\Bestsellers\Collection')
             ->addStoreFilter($this->_storeManager->getStore()->getId())
-            ->setPageSize($this->getProductLimit());
+            ->setPageSize(100);
     }
 
     public function isVisible($product)
@@ -104,7 +124,7 @@ class Bestsellers extends Template implements BlockInterface
             $prodId = $id;
         }
 
-        return $this->productCollectionFactory
+        $product = $this->productCollectionFactory
             ->create()
             ->addFieldToFilter('entity_id', $prodId)
             ->addAttributeToSelect('*')
@@ -115,6 +135,12 @@ class Bestsellers extends Template implements BlockInterface
             ->addAttributeToSelect('special_price')
             ->addAttributeToSelect('visibility')
             ->getFirstItem();
+
+        if (!empty($parentProdId)) {
+            $product->setData('parent_id', $parentProd);
+        }
+
+        return $product;
     }
 
     public function getProductUrl($product, $additional = [])
@@ -145,11 +171,12 @@ class Bestsellers extends Template implements BlockInterface
 
     public function getProductLimit()
     {
-        if ($this->getData('productCount') == '') {
-            return self::DEFAULT_PRODUCTS_COUNT;
+        $productsCount = $this->getData('products_count');
+        if ($productsCount === null || !ctype_digit($productsCount)) {
+            $productsCount = self::DEFAULT_PRODUCTS_COUNT; // default value
         }
 
-        return $this->getData('productCount');
+        return $productsCount;
     }
 
     public function getAddToCompareUrl()

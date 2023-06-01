@@ -1,0 +1,28 @@
+<widgets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Widget:etc/widget.xsd">
+    <widget class="OH\Bestsellers\Block\Bestsellers" id="oh_bestsellers">
+        <label>OH Bestsellers</label>
+        <description>Bestsellers Products</description>
+        <parameters>
+            <parameter name="products_count" xsi:type="text" visible="true" required="true" sort_order="10">
+                <label>Number of products to show</label>
+            </parameter>
+
+            <parameter name="show_title" xsi:type="select" visible="true" required="true" sort_order="20">
+                <label>Show Title Bestsellers</label>
+                <options>
+                    <option name="true" value="1" selected="true">
+                        <label>Yes</label>
+                    </option>
+                    <option name="false" value="0">
+                        <label>No</label>
+                    </option>
+                </options>
+            </parameter>
+
+            <parameter name="title" xsi:type="text" visible="true" sort_order="30">
+                <label>Title:</label>
+            </parameter>
+        </parameters>
+    </widget>
+</widgets>

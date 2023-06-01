@@ -3,10 +3,11 @@
 
 $prodColl = $block->getBestsellerProduct();
 $addedIds = [];
+$showTitle = $block->getShowTitleBestsellers();
 
 if ($exist = ($prodColl && $prodColl->count())) {
     $mode = 'grid';
-    $title = __('Bestseller Products');
+    $title = $block->getTitleBestsellers();
     $type = 'widget-bestseller-grid';
     $image = 'oh_bestseller_products_widget_grid';
     $showWishlist = true;
@@ -19,15 +20,18 @@ if ($exist = ($prodColl && $prodColl->count())) {
 
 <?php if ($exist): ?>
     <div class="block block-bestseller-products <?php echo $mode; ?>">
-        <div class="block-title">
-            <strong role="heading" aria-level="2"><?php echo $title; ?></strong>
-        </div>
+        <?php if ($showTitle): ?>
+            <div class="block-title">
+                <strong role="heading" aria-level="2"><?php echo $title; ?></strong>
+            </div>
+        <?php endif; ?>
         <div class="block-content">
             <div class="products-<?= $mode ?> <?= $mode ?>">
                 <ol class="product-items <?= $type ?>">
                     <?php foreach ($prodColl as $_item) : ?>
                         <?php $product = $block->getProduct($_item->getProductId()) ?>
-                        <?php if (!$block->isVisible($product) || in_array($product->getEntityId(), $addedIds)): continue;endif; ?>
+                        <?php if (count($addedIds) >= $block->getProductLimit()): break;endif; ?>
+                        <?php if (!$block->isVisible($product) || in_array($product->getEntityId(), $addedIds) || in_array($product->getParentId(), $addedIds)): continue;endif; ?>
                         <?php $addedIds[] = $product->getEntityId(); ?>
                         <li class="product-item">
                             <div class="product-item-info">
