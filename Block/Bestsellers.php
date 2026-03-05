@@ -8,9 +8,12 @@ use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Widget\Block\BlockInterface;
+use \OH\Core\Helper\TimingDebug;
 
 class Bestsellers extends Template implements BlockInterface
 {
+    use TimingDebug;
+
     protected $_template = 'OH_Bestsellers::bestseller.phtml';
 
     /**
@@ -22,6 +25,10 @@ class Bestsellers extends Template implements BlockInterface
      * Default value whether show title
      */
     const DEFAULT_TITLE = 'Bestseller Products';
+
+    private const CACHE_BESTSELLERS = 'oh_bestsellers_collection';
+    private const CACHE_PRODUCT_PREFIX = 'oh_bestsellers_product_';
+    private const CACHE_TTL = 3600;
 
     public function __construct(
         protected readonly SerializerInterface $serializer,
@@ -61,7 +68,7 @@ class Bestsellers extends Template implements BlockInterface
             ->addStoreFilter($this->_storeManager->getStore()->getId())
             ->setPageSize(100);
 
-        $cached = $this->_cache->load('oh_bestsellers_collection');
+        $cached = $this->_cache->load(self::CACHE_BESTSELLERS);
 
         if ($cached) {
             return $this->hydrateCollectionFromCache($collection, $this->serializer->unserialize($cached));
@@ -86,7 +93,7 @@ class Bestsellers extends Template implements BlockInterface
     private function cacheCollection($collection): void
     {
         $items = array_map(fn($item) => $item->getData(), $collection->getItems());
-        $this->_cache->save($this->serializer->serialize($items), 'oh_bestsellers_collection', [], 3600);
+        $this->_cache->save($this->serializer->serialize($items), self::CACHE_BESTSELLERS, [], self::CACHE_TTL);
     }
 
     public function isVisible($product)
@@ -97,14 +104,17 @@ class Bestsellers extends Template implements BlockInterface
 
     public function getProduct($id)
     {
-        $parentProd = $this->configurable->getParentIdsByChild($id);
+        $cacheKey = self::CACHE_PRODUCT_PREFIX . $id;
+        $cached = $this->_cache->load($cacheKey);
 
-        if ($parentProd) {
-            $parentProdId = reset($parentProd);
-            $prodId = $parentProdId;
-        } else {
-            $prodId = $id;
+        if ($cached) {
+            $product = $this->productCollectionFactory->create()->getNewEmptyItem();
+            $product->setData($this->serializer->unserialize($cached));
+            return $product;
         }
+
+        $parentProd = $this->configurable->getParentIdsByChild($id);
+        $prodId = $parentProd ? reset($parentProd) : $id;
 
         $product = $this->productCollectionFactory
             ->create()
@@ -118,9 +128,11 @@ class Bestsellers extends Template implements BlockInterface
             ->addAttributeToSelect('visibility')
             ->getFirstItem();
 
-        if (!empty($parentProdId)) {
+        if ($parentProd) {
             $product->setData('parent_id', $parentProd);
         }
+
+        $this->_cache->save($this->serializer->serialize($product->getData()), $cacheKey, [], self::CACHE_TTL);
 
         return $product;
     }
