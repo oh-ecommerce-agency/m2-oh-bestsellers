@@ -4,6 +4,7 @@ namespace OH\Bestsellers\Block;
 
 use Magento\Catalog\Model\Product\Visibility;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
+use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Widget\Block\BlockInterface;
@@ -22,66 +23,20 @@ class Bestsellers extends Template implements BlockInterface
      */
     const DEFAULT_TITLE = 'Bestseller Products';
 
-    /**
-     * @var \Magento\Catalog\Helper\Product\Compare
-     */
-    protected $compareProduct;
-
-    /**
-     * @var \Magento\Catalog\Block\Product\ImageBuilder
-     */
-    protected $imageBuilder;
-
-    /**
-     * @var \Magento\Reports\Model\ResourceModel\Report\Collection\Factory
-     */
-    protected $resourceFactory;
-
-    /**
-     * @var CollectionFactory
-     */
-    protected $productCollectionFactory;
-
-    /**
-     * @var \Magento\Checkout\Helper\Cart
-     */
-    protected $cartHelper;
-
-    /**
-     * @var \Magento\Catalog\Model\Product\Attribute\Source\Status
-     */
-    protected $productStatus;
-
-    /**
-     * @var \Magento\Catalog\Block\Product\ReviewRendererInterface
-     */
-    protected $reviewRenderer;
-
-    /**
-     * @var \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable
-     */
-    protected $configurable;
-
     public function __construct(
-        \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable $configurable,
-        \Magento\Catalog\Block\Product\ReviewRendererInterface $reviewRenderer,
-        \Magento\Catalog\Model\Product\Attribute\Source\Status $productStatus,
-        CollectionFactory $productCollectionFactory,
-        \Magento\Catalog\Helper\Product\Compare $compareProduct,
-        \Magento\Catalog\Block\Product\ImageBuilder $imageBuilder,
-        \Magento\Catalog\Block\Product\Context $context,
-        \Magento\Reports\Model\ResourceModel\Report\Collection\Factory $resourceFactory,
+        protected readonly SerializerInterface $serializer,
+        protected readonly \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable $configurable,
+        protected readonly \Magento\Catalog\Block\Product\ReviewRendererInterface $reviewRenderer,
+        protected readonly \Magento\Catalog\Model\Product\Attribute\Source\Status $productStatus,
+        protected readonly CollectionFactory $productCollectionFactory,
+        protected readonly \Magento\Catalog\Helper\Product\Compare $compareProduct,
+        protected readonly \Magento\Catalog\Block\Product\ImageBuilder $imageBuilder,
+        protected readonly \Magento\Reports\Model\ResourceModel\Report\Collection\Factory $resourceFactory,
+        protected readonly \Magento\Checkout\Helper\Cart $cartHelper,
+        protected readonly \Magento\Framework\View\Element\Template\Context $context,
         array $data = []
     ) {
         parent::__construct($context, $data);
-        $this->configurable = $configurable;
-        $this->reviewRenderer = $reviewRenderer;
-        $this->productStatus = $productStatus;
-        $this->productCollectionFactory = $productCollectionFactory;
-        $this->imageBuilder = $imageBuilder;
-        $this->compareProduct = $compareProduct;
-        $this->resourceFactory = $resourceFactory;
-        $this->cartHelper = $context->getCartHelper();
     }
 
     public function getShowTitleBestsellers()
@@ -101,10 +56,37 @@ class Bestsellers extends Template implements BlockInterface
 
     public function getBestsellerProduct()
     {
-        return $this->resourceFactory
+        $collection = $this->resourceFactory
             ->create('Magento\Sales\Model\ResourceModel\Report\Bestsellers\Collection')
             ->addStoreFilter($this->_storeManager->getStore()->getId())
             ->setPageSize(100);
+
+        $cached = $this->_cache->load('oh_bestsellers_collection');
+
+        if ($cached) {
+            return $this->hydrateCollectionFromCache($collection, $this->serializer->unserialize($cached));
+        }
+
+        $this->cacheCollection($collection);
+
+        return $collection;
+    }
+
+    private function hydrateCollectionFromCache($collection, array $itemsData)
+    {
+        $collection->clear();
+        foreach ($itemsData as $itemData) {
+            $collection->addItem(
+                $collection->getNewEmptyItem()->setData($itemData)
+            );
+        }
+        return $collection;
+    }
+
+    private function cacheCollection($collection): void
+    {
+        $items = array_map(fn($item) => $item->getData(), $collection->getItems());
+        $this->_cache->save($this->serializer->serialize($items), 'oh_bestsellers_collection', [], 3600);
     }
 
     public function isVisible($product)
