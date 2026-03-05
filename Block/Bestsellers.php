@@ -8,12 +8,9 @@ use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Widget\Block\BlockInterface;
-use \OH\Core\Helper\TimingDebug;
 
 class Bestsellers extends Template implements BlockInterface
 {
-    use TimingDebug;
-
     protected $_template = 'OH_Bestsellers::bestseller.phtml';
 
     /**
