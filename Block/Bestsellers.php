@@ -29,6 +29,7 @@ class Bestsellers extends Template implements BlockInterface
     public function __construct(
         protected readonly \Magento\Framework\App\ResourceConnection $resourceConnection,
         protected readonly SerializerInterface $serializer,
+        protected readonly \Magento\Wishlist\Helper\Data $wishlistHelper,
         protected readonly \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable $configurable,
         protected readonly \Magento\Catalog\Block\Product\ReviewRendererInterface $reviewRenderer,
         protected readonly \Magento\Catalog\Model\Product\Attribute\Source\Status $productStatus,
@@ -46,6 +47,19 @@ class Bestsellers extends Template implements BlockInterface
     public function getShowTitleBestsellers()
     {
         return $this->getData('show_title');
+    }
+
+    public function getCacheKeyInfo(): array
+    {
+        return array_merge(parent::getCacheKeyInfo(), [
+            $this->getData('products_count'),
+            $this->getData('show_title'),
+        ]);
+    }
+
+    public function getAddToWishlistParams($item): string
+    {
+        return $this->wishlistHelper->getAddParams($item->getProduct());
     }
 
     public function getTitleBestsellers()
