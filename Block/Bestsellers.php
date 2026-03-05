@@ -24,7 +24,6 @@ class Bestsellers extends Template implements BlockInterface
     const DEFAULT_TITLE = 'Bestseller Products';
 
     private const CACHE_BESTSELLERS = 'oh_bestsellers_collection';
-    private const CACHE_PRODUCT_PREFIX = 'oh_bestsellers_product_';
     private const CACHE_TTL = 3600;
 
     public function __construct(
