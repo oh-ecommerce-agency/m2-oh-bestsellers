@@ -28,6 +28,7 @@ class Bestsellers extends Template implements BlockInterface
     private const CACHE_TTL = 3600;
 
     public function __construct(
+        protected readonly \Magento\Framework\App\ResourceConnection $resourceConnection,
         protected readonly SerializerInterface $serializer,
         protected readonly \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable $configurable,
         protected readonly \Magento\Catalog\Block\Product\ReviewRendererInterface $reviewRenderer,
@@ -99,39 +100,58 @@ class Bestsellers extends Template implements BlockInterface
                 [Visibility::VISIBILITY_IN_CATALOG, Visibility::VISIBILITY_BOTH]);
     }
 
-    public function getProduct($id)
+    public function getProductsMap(\Magento\Sales\Model\ResourceModel\Report\Bestsellers\Collection $prodColl): array
     {
-        $cacheKey = self::CACHE_PRODUCT_PREFIX . $id;
-        $cached = $this->_cache->load($cacheKey);
-
-        if ($cached) {
-            $product = $this->productCollectionFactory->create()->getNewEmptyItem();
-            $product->setData($this->serializer->unserialize($cached));
-            return $product;
+        $ids = [];
+        foreach ($prodColl as $item) {
+            $ids[] = $item->getProductId();
         }
 
-        $parentProd = $this->configurable->getParentIdsByChild($id);
-        $prodId = $parentProd ? reset($parentProd) : $id;
+        // Single query to resolve all parents at once
+        $connection = $this->resourceConnection->getConnection();
+        $select = $connection->select()
+            ->from($this->resourceConnection->getTableName('catalog_product_super_link'), ['product_id', 'parent_id'])
+            ->where('product_id IN (?)', $ids);
 
-        $product = $this->productCollectionFactory
+        $parentMap = [];
+        foreach ($connection->fetchAll($select) as $row) {
+            $parentMap[$row['product_id']] = $row['parent_id'];
+        }
+
+        // Fall back to self if no parent found
+        $uniqueIds = array_unique(array_map(
+            fn($id) => $parentMap[$id] ?? $id,
+            $ids
+        ));
+
+        $collection = $this->productCollectionFactory
             ->create()
-            ->addFieldToFilter('entity_id', $prodId)
+            ->addIdFilter($uniqueIds)
             ->addAttributeToSelect('*')
             ->addAttributeToSelect('request_path')
             ->addAttributeToSelect('name')
             ->addAttributeToSelect('price')
-            ->addAttributeToSelect('parent_ids')
             ->addAttributeToSelect('special_price')
-            ->addAttributeToSelect('visibility')
-            ->getFirstItem();
+            ->addAttributeToSelect('visibility');
 
-        if ($parentProd) {
-            $product->setData('parent_id', $parentProd);
+        $productMap = [];
+        foreach ($collection as $product) {
+            $productMap[$product->getEntityId()] = $product;
         }
 
-        $this->_cache->save($this->serializer->serialize($product->getData()), $cacheKey, [], self::CACHE_TTL);
+        $result = [];
+        foreach ($ids as $id) {
+            $resolvedId = $parentMap[$id] ?? $id;
+            if (isset($productMap[$resolvedId])) {
+                $product = $productMap[$resolvedId];
+                if (isset($parentMap[$id])) {
+                    $product->setData('parent_id', [$resolvedId]);
+                }
+                $result[$id] = $product;
+            }
+        }
 
-        return $product;
+        return $result;
     }
 
     public function getProductUrl($product, $additional = [])
